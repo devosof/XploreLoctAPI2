@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from "cors";
+import cookieParser from 'cookie-parser';
 
 // cors configuration (production level configuration)
 
@@ -24,6 +25,9 @@ app.use(express.urlencoded({extended: true, limit: "16kb"}))
 // to use static files usually from public folder
 app.use(express.static("public"))
 
+
+// cookieparser is to perform crud operation on cookies;
+app.use(cookieParser())
 
 
 
