@@ -191,6 +191,39 @@ export const getUserInterestedEvents = AsyncHandler(async (req, res) => {
 
 
 
+// to mark or unmark an event as interested by the user
+export const toggleInterested = AsyncHandler(async (req, res) => {
+    const { eventId } = req.params;
+    const userId = req.user.id;
+
+    // Check if event exists
+    const eventExists = await knex('events').where({ event_id: eventId }).first();
+    if (!eventExists) {
+        throw new ApiError(404, 'Event not found');
+    }
+
+    // Check if the event is already in the user's interested list
+    const user = await User.findById(userId);
+    const isInterested = user.interested_in && user.interested_in.includes(parseInt(eventId));
+
+    if (isInterested) {
+        // Remove from interested list
+        await knex('users')
+            .where({ id: userId })
+            .update({
+                interested_in: knex.raw('array_remove(interested_in, ?)', [eventId])
+            });
+        res.status(200).json(new ApiResponse(200, {}, 'Event removed from interested list'));
+    } else {
+        // Add to interested list
+        await User.addInterest(userId, eventId);
+        res.status(200).json(new ApiResponse(200, {}, 'Event added to interested list'));
+    }
+});
+
+
+
+
 
 
 
