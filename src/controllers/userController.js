@@ -51,27 +51,74 @@ export const refreshAccessToken = AsyncHandler(async (req, res) => {
 
 
 // Register a new user
-export const registerUser = AsyncHandler(async (req, res) => {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
-        throw new ApiError(400, "Username, email, and password are required");
+
+// controllers/userController.js
+
+import User from '../models/User.js';
+import { asyncHandler } from '../utils/AsyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
+import { ApiResponse } from '../utils/ApiResponse.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { generateTokens } from '../utils/tokenUtils.js';  // assuming you have a function to generate tokens
+
+// Helper function for phone validation (example format: +123456789 or 123456789)
+const validatePhoneNumber = (phone) => {
+    const phoneRegex = /^\+?[1-9]\d{9,14}$/;
+    return phoneRegex.test(phone);
+};
+
+// Helper function for address validation (example: no special characters except comma and period)
+const validateAddress = (address) => {
+    const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
+    return addressRegex.test(address);
+};
+
+// Register a new user
+export const registerUser = asyncHandler(async (req, res) => {
+    const { username, email, address, phone, password } = req.body;
+
+    // Check if required fields are present
+    if (!username || !address || !phone || !password) {
+        throw new ApiError(400, "Username, address, phone, and password are required");
     }
 
-    const existingUser = await User.findByEmail(email);
+    // Validate username uniqueness
+    const existingUsername = await User.findByUsername(username);
+    if (existingUsername) {
+        throw new ApiError(409, "Username is already taken");
+    }
+
+    // Validate phone format
+    if (!validatePhoneNumber(phone)) {
+        throw new ApiError(400, "Phone number is invalid. Please enter a valid phone number.");
+    }
+
+    // Validate address format
+    if (!validateAddress(address)) {
+        throw new ApiError(400, "Address is invalid. Please enter a valid address.");
+    }
+
+    // Check for existing user with the same details
+    const existingUser = await User.findDuplicateUser({ username, address, phone });
     if (existingUser) {
-        throw new ApiError(409, "User with this email already exists");
+        throw new ApiError(409, "User with these details already exists. Please try logging in.");
     }
 
+    // Handle avatar upload if provided
     const avatarLocalPath = req.file?.path;
     const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
 
+    // Create user
     const user = await User.create({
         username,
         email,
+        address,
+        phone,
         password,
-        avatar: avatar ? avatar.url : null
+        avatar: avatar ? avatar.url : null,
     });
 
+    // Generate tokens
     const { accessToken, refreshToken } = await generateTokens(user.id);
 
     res.status(201).json(
@@ -79,17 +126,37 @@ export const registerUser = AsyncHandler(async (req, res) => {
     );
 });
 
-// Login user
-export const loginUser = AsyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    console.log(`Hitting login User: \n Email: ${email}`);
-    
-    const user = await User.findByEmail(email);
 
-    if (!user || !(await User.isPasswordCorrect(password, user.password))) {
-        throw new ApiError(401, "Invalid email or password");
+
+//login user:
+// controllers/userController.js
+
+export const loginUser = AsyncHandler(async (req, res) => {
+    const { credential, password } = req.body;
+
+    console.log(`Hitting login User: \n Credential: ${credential}`);
+
+    // Check if credential is provided
+    if (!credential || !password) {
+        throw new ApiError(400, "Credential and password are required");
     }
 
+    // Determine if credential is email, username, or phone
+    let user;
+    if (credential.includes('@')) {
+        user = await User.findByEmail(credential);  // Treat credential as an email
+    } else if (/^\d+$/.test(credential)) {
+        user = await User.findByPhone(credential);  // Treat credential as a phone number
+    } else {
+        user = await User.findByUsername(credential);  // Treat credential as a username
+    }
+
+    // Validate password
+    if (!user || !(await User.isPasswordCorrect(password, user.password))) {
+        throw new ApiError(401, "Invalid credentials");
+    }
+
+    // Generate access and refresh tokens
     const { accessToken, refreshToken } = await generateTokens(user.id);
 
     res.status(200)
@@ -98,8 +165,64 @@ export const loginUser = AsyncHandler(async (req, res) => {
         .json(new ApiResponse(200, { user, accessToken, refreshToken }, "User logged in successfully"));
 });
 
+// export const registerUser = AsyncHandler(async (req, res) => {
+
+//     const { username, address, phone, password } = req.body;
+//     if (!username || !address || !phone || !password) {
+//         throw new ApiError(400, "Username, address, phone, and password are required");
+//     }
+
+//     const existingUser = await User.findByEmail(email);
+//     if (existingUser) {
+//         throw new ApiError(409, "User with this email already exists");
+//     }
+
+//     const avatarLocalPath = req.file?.path;
+//     const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
+
+//     const user = await User.create({
+//         username,
+//         email,
+//         password,
+//         avatar: avatar ? avatar.url : null
+//     });
+
+//     const { accessToken, refreshToken } = await generateTokens(user.id);
+
+//     res.status(201).json(
+//         new ApiResponse(201, { user, accessToken, refreshToken }, "User registered successfully")
+//     );
+// });
+
+// Login user
+
+
+// export const loginUser = AsyncHandler(async (req, res) => {
+//     const { email, password } = req.body;
+//     console.log(`Hitting login User: \n Email: ${email}`);
+    
+//     const user = await User.findByEmail(email);
+
+//     if (!user || !(await User.isPasswordCorrect(password, user.password))) {
+//         throw new ApiError(401, "Invalid email or password");
+//     }
+
+//     const { accessToken, refreshToken } = await generateTokens(user.id);
+
+//     res.status(200)
+//         .cookie("accessToken", accessToken, { httpOnly: true })
+//         .cookie("refreshToken", refreshToken, { httpOnly: true })
+//         .json(new ApiResponse(200, { user, accessToken, refreshToken }, "User logged in successfully"));
+// });
+
 
 // logout user
+
+
+
+
+
+
 export const logoutUser = AsyncHandler(async (req, res) => {
   // Clear refresh token from database
   await User.saveRefreshToken(req.user.id, null);

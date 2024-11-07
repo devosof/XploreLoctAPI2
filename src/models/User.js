@@ -77,7 +77,34 @@ class User {
   static async saveRefreshToken(userId, refreshToken) {
     return knex('users').where({ id: userId }).update({ refreshToken }).returning('*');
   }
+
+  // models/User.js
+  static async findDuplicateUser(details) {
+    const { username, address, phone } = details;
+    return knex('users')
+        .where({ username, address, phone })
+        .first();
+  }
+
+
+  // models/User.js
+
+
+
+  static async findByPhone(phone) {
+    return knex('users').where({ phone }).first();
+  }
+
+  static async findByUsername(username) {
+    return knex('users').where({ username }).first();
+  }
+
+
+
+
 }
+
+
 
 export default User;
 
