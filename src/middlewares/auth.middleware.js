@@ -4,7 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import knex from '../db/db.js';
 
 const verifyJWT = async (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
     if (!token) throw new ApiError(401, 'Unauthorized');
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {

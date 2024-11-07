@@ -16,7 +16,7 @@ import verifyJWT from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-router.post('/', verifyJWT, createEvent);             // Restricted to organizers
+router.post('/create', verifyJWT, createEvent);             // Restricted to organizers
 router.get('/', listEvents);                          // Public route to list events with filters
 
 // for search:

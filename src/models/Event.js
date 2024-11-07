@@ -39,6 +39,12 @@ class Event {
     return query;
   }
 
+  static async findSimilar({ name, date, place, city, country }) {
+    return knex('events')
+      .where({ name, date, place, city, country })
+      .first();
+  }
+
   static async addReview(event_id, user_id, review) {
     return knex('reviews').insert({ event_id, user_id, ...review }).returning('*');
   }

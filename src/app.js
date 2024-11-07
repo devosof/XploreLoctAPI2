@@ -36,12 +36,15 @@ app.use(cookieParser())
 // routes import
 import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
+import organizerRoutes from './routes/organizerRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
+
 
 
 
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/organizers', organizerRoutes);
 app.use(errorHandler); // Error handling middleware
 
 export default app;

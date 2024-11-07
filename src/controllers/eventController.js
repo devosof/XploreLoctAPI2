@@ -1,15 +1,32 @@
 import Event from '../models/Event.js';
+import Organizer from '../models/Organizers.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import knex from '../db/db.js';
 
-// Create event (restricted to organizers)
+// // Create event (restricted to organizers)
+// export const createEvent = AsyncHandler(async (req, res) => {
+//   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can create events');
+//   const newEvent = await Event.create(req.body);
+//   res.status(201).json(new ApiResponse(201, newEvent, 'Event created'));
+// });
+
 export const createEvent = AsyncHandler(async (req, res) => {
   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can create events');
+
+  const { name, date, place, city, country } = req.body;
+
+  // Check if an event with the same details exists
+  const existingEvent = await Event.findSimilar({ name, date, place, city, country });
+  if (existingEvent) {
+    throw new ApiError(409, 'Event with the following details already exists');
+  }
+
   const newEvent = await Event.create(req.body);
   res.status(201).json(new ApiResponse(201, newEvent, 'Event created'));
 });
+
 
 // Get event details
 export const getEvent = AsyncHandler(async (req, res) => {
@@ -18,20 +35,85 @@ export const getEvent = AsyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, event, 'Event retrieved'));
 });
 
-// Update event (restricted to organizers)
+
+
+
+// Update event (restricted to the organizer who created it)
+// Update event (restricted to the organizer who created it)
 export const updateEvent = AsyncHandler(async (req, res) => {
-  if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can update events');
-  const updatedEvent = await Event.update(req.params.id, req.body);
-  if (!updatedEvent) throw new ApiError(404, 'Event not found');
-  res.json(new ApiResponse(200, updatedEvent, 'Event updated'));
+  try {
+    if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can update events');
+
+    // Find the organizer associated with the current user
+    const currentOrganizer = await Organizer.findByUserId(req.user.id);
+    if (!currentOrganizer) throw new ApiError(404, 'Organizer not found');
+
+    // Find the event to ensure it exists and get the organizer_id
+    const event = await Event.findById(req.params.id);
+    if (!event) throw new ApiError(404, 'Event not found');
+
+    // Check if the current organizer is the one who created the event
+    if (event.organizer_id !== currentOrganizer.organizer_id) {
+      throw new ApiError(403, 'You do not have permission to update this event');
+    }
+
+    // Proceed to update the event
+    const updatedEvent = await Event.update(req.params.id, req.body);
+    res.json(new ApiResponse(200, updatedEvent, 'Event updated'));
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
+    }
+    console.error(error);
+    res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+  }
 });
 
-// Delete event (restricted to organizers)
+// Delete event (restricted to the organizer who created it)
 export const deleteEvent = AsyncHandler(async (req, res) => {
-  if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can delete events');
-  await Event.delete(req.params.id);
-  res.json(new ApiResponse(200, 'Event deleted'));
+  try {
+    if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can delete events');
+
+    // Find the organizer associated with the current user
+    const currentOrganizer = await Organizer.findByUserId(req.user.id);
+    if (!currentOrganizer) throw new ApiError(404, 'Organizer not found');
+
+    // Find the event to ensure it exists and get the organizer_id
+    const event = await Event.findById(req.params.id);
+    if (!event) throw new ApiError(404, 'Event not found');
+
+    // Check if the current organizer is the one who created the event
+    if (event.organizer_id !== currentOrganizer.organizer_id) {
+      throw new ApiError(403, 'You do not have permission to delete this event');
+    }
+
+    // Proceed to delete the event
+    await Event.delete(req.params.id);
+    res.json(new ApiResponse(200, 'Event deleted'));
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
+    }
+    console.error(error);
+    res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+  }
 });
+
+
+// // Update event (restricted to organizers)
+// export const updateEvent = AsyncHandler(async (req, res) => {
+//   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can update events');
+//   const updatedEvent = await Event.update(req.params.id, req.body);
+//   if (!updatedEvent) throw new ApiError(404, 'Event not found');
+//   res.json(new ApiResponse(200, updatedEvent, 'Event updated'));
+// });
+
+// // Delete event (restricted to organizers)
+// export const deleteEvent = AsyncHandler(async (req, res) => {
+//   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can delete events');
+//   await Event.delete(req.params.id);
+//   res.json(new ApiResponse(200, 'Event deleted'));
+// });
 
 // List events with search filters
 // export const listEvents = AsyncHandler(async (req, res) => {
