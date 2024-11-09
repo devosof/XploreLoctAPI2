@@ -39,3 +39,13 @@ export const updateSpeakerDetails = AsyncHandler(async (req, res) => {
     res.status(error.statusCode || 500).json({ status: 'error', message: error.message });
   }
 });
+
+
+
+// controllers/speakerController.js
+
+export const getAvailableSpeakers = AsyncHandler(async (req, res) => {
+  const speakers = await Speaker.findAll();
+  res.status(200).json(new ApiResponse(200, speakers, 'Available speakers retrieved successfully'));
+});
+

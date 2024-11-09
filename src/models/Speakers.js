@@ -7,6 +7,10 @@ class Speaker {
     return knex('speakers').insert(data).returning('*');
   }
 
+  static async findAll() {
+    return knex('speakers').select('*');
+  }
+
   // Find a speaker by user ID
   static async findByUserId(user_id) {
     return knex('speakers').where({ user_id }).first();

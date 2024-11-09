@@ -1,4 +1,5 @@
 import Event from '../models/Event.js';
+import EventDetails from '../models/EventDetails.js';
 import Organizer from '../models/Organizers.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
@@ -13,19 +14,79 @@ import knex from '../db/db.js';
 // });
 
 export const createEvent = AsyncHandler(async (req, res) => {
-  if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can create events');
+  try {
+      const { name, description, country, city, district, town, place, address, latitude, longitude, google_maps_link, frequency, capacity, genderAllowance, time, duration, image_url, speakers, date, eventAttendees } = req.body;
 
-  const { name, date, place, city, country } = req.body;
+      // Check if user is an organizer
+      if (!req.user.isOrganizer) {
+          throw new ApiError(403, 'Only organizers can create events');
+      }
 
-  // Check if an event with the same details exists
-  const existingEvent = await Event.findSimilar({ name, date, place, city, country });
-  if (existingEvent) {
-    throw new ApiError(409, 'Event with the following details already exists');
+      // Fetch the organizer_id from the organizers table for the authenticated user
+      const organizer = await Organizer.findByUserId(req.user.id);
+      if (!organizer) {
+          throw new ApiError(404, 'Organizer not found for the current user');
+      }
+
+      // Duplicate event check (based on fields in the events table)
+      const existingEvent = await Event.findSimilar({ name, place, city, country });
+      if (existingEvent) {
+          throw new ApiError(409, 'An event with these details already exists');
+      }
+
+      // Create the event in the events table
+      const newEvent = await Event.create({
+          name,
+          description,
+          country,
+          city,
+          district,
+          town,
+          place,
+          address,
+          latitude,
+          longitude,
+          google_maps_link,
+          frequency,
+          capacity,
+          genderAllowance,
+          time,
+          duration,
+          image_url,
+          organizer_id: organizer.organizer_id, // Use the organizer_id from the organizers table
+      });
+
+      // Create associated event details in the eventDetails table
+      const eventDetails = await EventDetails.create({
+          event_id: newEvent.event_id,
+          organizer_id: organizer.organizer_id, // Associate eventDetails with the organizer
+          event_date: date,                     // Date of the event
+          event_speakers: speakers, // Array of speaker IDs
+          attendee_count: eventAttendees            // Number of attendees (as a numeric value)
+      });
+
+      res.status(201).json(new ApiResponse(201, { newEvent, eventDetails }, 'Event and details created successfully'));
+
+  } catch (error) {
+      throw new ApiError(500, error.message || 'Failed to create event');
   }
-
-  const newEvent = await Event.create(req.body);
-  res.status(201).json(new ApiResponse(201, newEvent, 'Event created'));
 });
+
+
+// export const createEvent = AsyncHandler(async (req, res) => {
+//   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can create events');
+
+//   const { name, date, place, city, country } = req.body;
+
+//   // Check if an event with the same details exists
+//   const existingEvent = await Event.findSimilar({ name, date, place, city, country });
+//   if (existingEvent) {
+//     throw new ApiError(409, 'Event with the following details already exists');
+//   }
+
+//   const newEvent = await Event.create(req.body);
+//   res.status(201).json(new ApiResponse(201, newEvent, 'Event created'));
+// });
 
 
 // Get event details

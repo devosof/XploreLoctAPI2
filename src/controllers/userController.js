@@ -54,12 +54,12 @@ export const refreshAccessToken = AsyncHandler(async (req, res) => {
 
 // controllers/userController.js
 
-import User from '../models/User.js';
-import { asyncHandler } from '../utils/AsyncHandler.js';
-import { ApiError } from '../utils/ApiError.js';
-import { ApiResponse } from '../utils/ApiResponse.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
-import { generateTokens } from '../utils/tokenUtils.js';  // assuming you have a function to generate tokens
+// import User from '../models/User.js';
+// import { asyncHandler } from '../utils/AsyncHandler.js';
+// import { ApiError } from '../utils/ApiError.js';
+// import { ApiResponse } from '../utils/ApiResponse.js';
+// import { uploadOnCloudinary } from '../utils/cloudinary.js';
+// import { generateTokens } from '../utils/tokenUtils.js';  // assuming you have a function to generate tokens
 
 // Helper function for phone validation (example format: +123456789 or 123456789)
 const validatePhoneNumber = (phone) => {
@@ -74,7 +74,7 @@ const validateAddress = (address) => {
 };
 
 // Register a new user
-export const registerUser = asyncHandler(async (req, res) => {
+export const registerUser = AsyncHandler(async (req, res) => {
     const { username, email, address, phone, password } = req.body;
 
     // Check if required fields are present

@@ -11,7 +11,10 @@ import {
   getCitiesByCountry,
   getLocationsByCity,
   searchEvents,
+
 } from '../controllers/eventController.js';
+import {updateEventDetails} from '../controllers/eventDetailsController.js';
+// import { getAvailableSpeakers } from '../controllers/speakerController.js';
 import verifyJWT from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
@@ -26,6 +29,11 @@ router.get('/search', searchEvents);  // Route for text-based search
 router.get('/countries', getCountries);                    // Get all countries
 router.get('/cities/:country', getCitiesByCountry);        // Get cities for a country
 router.get('/locations/:city', getLocationsByCity);        // Get locations for a city
+
+
+
+// endPoint to update eventDetails
+router.put('/:event_id/details', verifyJWT, updateEventDetails); // Endpoint to update event details
 
 
 
