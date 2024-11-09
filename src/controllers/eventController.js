@@ -13,6 +13,30 @@ import knex from '../db/db.js';
 //   res.status(201).json(new ApiResponse(201, newEvent, 'Event created'));
 // });
 
+// controller to get the trending events:
+const TRENDING_LIMIT = 4;  // Maximum number of trending events to fetch
+
+export const getTrendingEvents = AsyncHandler(async (req, res) => {
+    try {
+        // Fetch up to TRENDING_LIMIT events sorted by interest count (highest first)
+        let trendingEvents = await Event.getTrendingEvents(TRENDING_LIMIT);
+
+        // If no trending events, fetch random events instead
+        if (trendingEvents.length === 0) {
+            trendingEvents = await Event.getRandomEvents(TRENDING_LIMIT);
+        }
+
+        res.status(200).json(new ApiResponse(200, trendingEvents, 'Trending events fetched successfully'));
+
+    } catch (error) {
+        console.error("Error fetching trending events:", error.message);
+        throw new ApiError(500, error.message || 'Failed to fetch trending events');
+    }
+});
+
+
+
+
 export const createEvent = AsyncHandler(async (req, res) => {
   try {
       const { name, description, country, city, district, town, place, address, latitude, longitude, google_maps_link, frequency, capacity, genderAllowance, time, duration, image_url, speakers, date, eventAttendees } = req.body;

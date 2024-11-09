@@ -52,6 +52,23 @@ class Event {
   static async getReviews(event_id) {
     return knex('reviews').where({ event_id });
   }
+
+  static async getTrendingEvents(limit) {
+    return knex('events')
+        .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
+        .select('events.*')
+        .count('users.id AS interest_count')
+        .groupBy('events.event_id')
+        .orderBy('interest_count', 'desc')
+        .limit(limit);
+  }
+
+  static async getRandomEvents(limit) {
+      return knex('events')
+          .select('*')
+          .orderByRaw('RANDOM()')
+          .limit(limit);
+}
 }
 
 export default Event;
