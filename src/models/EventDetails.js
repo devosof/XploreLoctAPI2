@@ -7,9 +7,14 @@ class EventDetail {
     return knex('eventdetails').insert(data).returning('*');
   }
 
+
+
   static async findByEventId(event_id) {
-    return knex('eventdetails').where({ event_id });
+    return knex('event_details').where({ event_id }).first();
   }
+  // static async findByEventId(event_id) {
+  //   return knex('eventdetails').where({ event_id });
+  // }
 
   // static async findByEventAndOrganizer(event_id, organizer_id) {
   //   return knex('eventdetails').where({ event_id, organizer_id }).first();

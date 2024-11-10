@@ -114,16 +114,46 @@ export const createEvent = AsyncHandler(async (req, res) => {
 
 
 // Get event details
+
 export const getEvent = AsyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
-  if (!event) throw new ApiError(404, 'Event not found');
-  res.json(new ApiResponse(200, event, 'Event retrieved'));
+  try {
+      const eventId = req.params.id;
+
+      // Fetch the event from the events table
+      const event = await Event.findById(eventId);
+      if (!event) {
+          throw new ApiError(404, 'Event not found');
+      }
+
+      // Fetch the related eventDetails
+      const eventDetails = await EventDetails.findByEventId(eventId);
+      if (!eventDetails) {
+          throw new ApiError(404, 'Event details not found');
+      }
+
+      // Combine event and eventDetails data
+      const eventWithDetails = { ...event, details: eventDetails };
+
+      res.status(200).json(new ApiResponse(200, eventWithDetails, 'Event retrieved successfully'));
+
+  } catch (error) {
+      console.error("Error fetching event:", error.message);
+      throw new ApiError(500, error.message || 'Failed to retrieve event');
+  }
 });
 
+// export const getEvent = AsyncHandler(async (req, res) => {
+//   const event = await Event.findById(req.params.id);
+//   if (!event) throw new ApiError(404, 'Event not found');
+//   res.json(new ApiResponse(200, event, 'Event retrieved'));
+// });
 
 
 
-// Update event (restricted to the organizer who created it)
+
+
+
+
 // Update event (restricted to the organizer who created it)
 export const updateEvent = AsyncHandler(async (req, res) => {
   try {
