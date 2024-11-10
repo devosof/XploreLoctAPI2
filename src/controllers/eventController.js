@@ -237,12 +237,41 @@ export const deleteEvent = AsyncHandler(async (req, res) => {
 //   res.json(new ApiResponse(200, events, 'Events retrieved'));
 // });
 
-export const listEvents = AsyncHandler(async (req, res) => {
-  const { country, city, startDate, endDate, page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
+// export const listEvents = AsyncHandler(async (req, res) => {
+//   const { country, city, startDate, endDate, page = 1, limit = 10 } = req.query;
+//   const offset = (page - 1) * limit;
 
-  const events = await Event.findAll({ country, city, startDate, endDate, offset, limit });
-  res.json(new ApiResponse(200, events, 'Events retrieved'));
+//   const events = await Event.findAll({ country, city, startDate, endDate, offset, limit });
+//   res.json(new ApiResponse(200, events, 'Events retrieved'));
+// });
+
+
+export const listEvents = AsyncHandler(async (req, res) => {
+  try {
+    const { country, city, location, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Start building the query with potential filters
+    let query = Event.query();
+
+    if (country) query.where('country', country);
+    if (city) query.where('city', city);
+    if (location) query.where('place', location);
+
+    // Fetch events, ordering randomly if no filters are applied
+    const events = await query
+      .offset(offset)
+      .limit(limit)
+      .orderByRaw(country || city || location ? 'NULL' : 'RANDOM()');
+
+    res.status(200).json(new ApiResponse(200, events, 'Events retrieved'));
+  } catch (error) {
+    // Log the error (useful for debugging)
+    console.error('Error retrieving events:', error);
+
+    // Return a generic error response
+    throw new ApiError(500, 'Error retrieving events');
+  }
 });
 
 

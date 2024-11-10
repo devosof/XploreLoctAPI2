@@ -38,6 +38,8 @@ import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import organizerRoutes from './routes/organizerRoutes.js';
 import speakerRoutes from './routes/speakerRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+
 import errorHandler from './middlewares/errorHandler.js';
 
 
@@ -46,7 +48,8 @@ import errorHandler from './middlewares/errorHandler.js';
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/organizers', organizerRoutes);
-app.use('/api/speakers', speakerRoutes)
+app.use('/api/speakers', speakerRoutes);
+app.use('/api/admin', adminRoutes)
 app.use(errorHandler); // Error handling middleware
 
 export default app;
