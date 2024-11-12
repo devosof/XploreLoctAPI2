@@ -39,7 +39,7 @@ export const getTrendingEvents = AsyncHandler(async (req, res) => {
 
 export const createEvent = AsyncHandler(async (req, res) => {
   try {
-      const { name, description, country, city, district, town, place, address, latitude, longitude, google_maps_link, frequency, capacity, genderAllowance, time, duration, image_url, speakers, date, eventAttendees } = req.body;
+      const { name, description, country, city, district, town, place, address, latitude, longitude, google_maps_link, frequency, capacity, gender_allowance, time, duration, image_url, speakers, event_date, attendee_count } = req.body;
 
       // Check if user is an organizer
       if (!req.user.isOrganizer) {
@@ -53,13 +53,13 @@ export const createEvent = AsyncHandler(async (req, res) => {
       }
 
       // Duplicate event check (based on fields in the events table)
-      const existingEvent = await Event.findSimilar({ name, place, city, country });
+      const existingEvent = await Event.findSimilar({ name, event_date, place, city, country });
       if (existingEvent) {
           throw new ApiError(409, 'An event with these details already exists');
       }
 
       // Create the event in the events table
-      const newEvent = await Event.create({
+      const [newEvent] = await Event.create({
           name,
           description,
           country,
@@ -73,20 +73,22 @@ export const createEvent = AsyncHandler(async (req, res) => {
           google_maps_link,
           frequency,
           capacity,
-          genderAllowance,
+          gender_allowance,
           time,
           duration,
           image_url,
           organizer_id: organizer.organizer_id, // Use the organizer_id from the organizers table
       });
 
+      console.log("This is the created Event: ", newEvent)
+
       // Create associated event details in the eventDetails table
       const eventDetails = await EventDetails.create({
           event_id: newEvent.event_id,
           organizer_id: organizer.organizer_id, // Associate eventDetails with the organizer
-          event_date: date,                     // Date of the event
-          event_speakers: speakers, // Array of speaker IDs
-          attendee_count: eventAttendees            // Number of attendees (as a numeric value)
+          event_date: event_date,                     // Date of the event
+          eventspeakers: speakers, // Array of speaker IDs
+          attendee_count: attendee_count            // Number of attendees (as a numeric value)
       });
 
       res.status(201).json(new ApiResponse(201, { newEvent, eventDetails }, 'Event and details created successfully'));

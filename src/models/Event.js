@@ -39,11 +39,24 @@ class Event {
     return query;
   }
 
-  static async findSimilar({ name, date, place, city, country }) {
+  // static async findSimilar({ name, event_date, place, city, country }) {
+  //   return knex('events')
+  //     .where({ name, place, city, country })
+  //     .first();
+  // }
+
+  static async findSimilar({ name, event_date, place, city, country }) {
     return knex('events')
-      .where({ name, date, place, city, country })
-      .first();
-  }
+      .join('eventdetails', 'events.event_id', '=', 'eventdetails.event_id') // Join with eventdetails table
+      .where({
+        'events.name': name,
+        'events.place': place,
+        'events.city': city,
+        'events.country': country,
+        'eventdetails.event_date': event_date, // Search using event_date from eventdetails table
+      })
+      .first(); // Return the first matching event
+}
 
   static async addReview(event_id, user_id, review) {
     return knex('reviews').insert({ event_id, user_id, ...review }).returning('*');

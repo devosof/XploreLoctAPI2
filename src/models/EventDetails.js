@@ -33,12 +33,24 @@ class EventDetail {
   //     .returning('*');
   // }
 
-  static async update(event_id, organizer_id, data) {
+  // static async update(event_id, organizer_id, data) {
+  //   return knex('eventdetails')
+  //     .where({ event_id, organizer_id })
+  //     .update(data)
+  //     .returning('*');
+  // }
+
+  static async update(event_id, organizer_id, { eventspeakers, event_date, attendee_count }) {
     return knex('eventdetails')
-      .where({ event_id, organizer_id })
-      .update(data)
-      .returning('*');
-  }
+        .where({ event_id, organizer_id })
+        .update({
+            eventspeakers: knex.raw('?', [eventspeakers]), // Ensure it's handled as an array
+            event_date,
+            attendee_count
+        })
+        .returning('*');
+}
+
 
   static async deleteDetail(event_id, organizer_id, speaker_id) {
     return knex('eventdetails').where({ event_id, organizer_id, speaker_id }).del();
