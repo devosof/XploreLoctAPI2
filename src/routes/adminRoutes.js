@@ -12,7 +12,7 @@ router.post('/login', loginAdmin);
 
 // Organization management routes (protected by verifyAdmin middleware)
 // Use `upload.single('logo')` to handle optional logo file uploads
-router.post('/organizations', verifyAdmin, upload.single('logo'), createOrganization);
+router.post('/create-organization', verifyAdmin, upload.single('logo'), createOrganization);
 router.put('/organizations/:organization_id', verifyAdmin, upload.single('logo'), updateOrganization);
 router.delete('/organizations/:organization_id', verifyAdmin, deleteOrganization);
 

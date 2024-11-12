@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/ApiError.js';
 
 const verifyAdmin = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.cookies?.Token || req.headers.authorization?.split(' ')[1];
     if (!token) {
         throw new ApiError(403, 'No token provided');
     }

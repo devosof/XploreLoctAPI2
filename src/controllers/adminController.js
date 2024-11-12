@@ -15,7 +15,9 @@ export const loginAdmin = async (req, res, next) => {
 
         // Generate an admin token
         const token = jwt.sign({ isAdmin: true }, process.env.ADMIN_TOKEN_SECRET, { expiresIn: '1h' });
-        res.status(200).json(new ApiResponse(200, { token }, 'Admin login successful'));
+        res.status(200)
+        .cookie("Token", token, {httpOnly: true})
+        .json(new ApiResponse(200, { token }, 'Admin login successful'));
     } catch (error) {
         next(error);
     }
@@ -25,12 +27,11 @@ export const loginAdmin = async (req, res, next) => {
 export const createOrganization = async (req, res, next) => {
     try {
         const { name, organization_key, contact_email, contact_phone, address } = req.body;
-
-        let logo_url = null;
-        if (req.file) {
-            const logo = await uploadOnCloudinary(req.file.path);
-            logo_url = logo.url;
-        }
+        
+        
+        const logoLocalPath = req.file?.path;
+        const logo = logoLocalPath ? await uploadOnCloudinary(logoLocalPath) : null
+        
 
         const newOrganization = await Organization.create({
             name,
@@ -38,11 +39,12 @@ export const createOrganization = async (req, res, next) => {
             contact_email,
             contact_phone,
             address,
-            logo_url
+            logo_url: logo ? logo.url : null
         });
 
         res.status(201).json(new ApiResponse(201, newOrganization, "Organization created successfully"));
     } catch (error) {
+        console.log(error)
         next(new ApiError(500, "Failed to create organization", error));
     }
 };
