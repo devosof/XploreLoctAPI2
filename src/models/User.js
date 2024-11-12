@@ -8,7 +8,7 @@ class User {
   static async create(data) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     data.password = hashedPassword;
-    return knex('users').insert(data).returning(['id', '*']);
+    return knex('users').insert(data).returning('*');
 
   }
 
@@ -80,9 +80,9 @@ class User {
 
   // models/User.js
   static async findDuplicateUser(details) {
-    const { username, address, phone } = details;
+    const { username, email, phone } = details;
     return knex('users')
-        .where({ username, address, phone })
+        .where({ username, email, phone })
         .first();
   }
 

@@ -10,7 +10,7 @@ class EventDetail {
 
 
   static async findByEventId(event_id) {
-    return knex('event_details').where({ event_id }).first();
+    return knex('eventdetails').where({ event_id }).first();
   }
   // static async findByEventId(event_id) {
   //   return knex('eventdetails').where({ event_id });
@@ -34,7 +34,7 @@ class EventDetail {
   // }
 
   static async update(event_id, organizer_id, data) {
-    return knex('event_details')
+    return knex('eventdetails')
       .where({ event_id, organizer_id })
       .update(data)
       .returning('*');

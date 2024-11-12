@@ -22,11 +22,11 @@ class Event {
   //   return knex('events').select('*');
   // }
 
-  static async findAll({ country, city, startDate, endDate, offset = 0, limit = 10 }) {
+  static async findAll({ country, city, location, offset = 0, limit = 10 }) {
     const query = knex('events').select('*');
     if (country) query.where('country', country);
     if (city) query.where('city', city);
-    if (startDate && endDate) query.whereBetween('date', [startDate, endDate]);
+    if (location) query.where('location', location);
     return query.offset(offset).limit(limit);
   }
 

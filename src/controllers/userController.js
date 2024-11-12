@@ -75,55 +75,81 @@ const validateAddress = (address) => {
 
 // Register a new user
 export const registerUser = AsyncHandler(async (req, res) => {
-    const { username, email, address, phone, password } = req.body;
+    try {
+        const { username, email, address, phone, password } = req.body;
 
-    // Check if required fields are present
-    if (!username || !address || !phone || !password) {
-        throw new ApiError(400, "Username, address, phone, and password are required");
+        // Check if required fields are present
+        if (!username || !email || !phone || !password) {
+            throw new ApiError(400, "Username, email, phone, and password are required");
+        }
+
+        // Validate username uniqueness
+        const existingUsername = await User.findByUsername(username);
+        if (existingUsername) {
+            throw new ApiError(409, "Username is already taken");
+        }
+
+        // Validate phone format
+        if (!validatePhoneNumber(phone)) {
+            throw new ApiError(400, "Phone number is invalid. Please enter a valid phone number.");
+        }
+
+        // Validate address format
+        if (!validateAddress(address)) {
+            throw new ApiError(400, "Address is invalid. Please enter a valid address.");
+        }
+
+        // Check for existing user with the same details
+        const existingUser = await User.findDuplicateUser({ username, email, phone });
+        if (existingUser) {
+            throw new ApiError(409, "User with these details already exists. Please try logging in.");
+        }
+
+        // Handle avatar upload if provided
+        const avatarLocalPath = req.file?.path;
+        const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
+
+        // Create user
+        const [user] = await User.create({
+            username,
+            email,
+            phone,
+            password,
+            avatar: avatar ? avatar.url : null,
+        });
+
+        console.log("HERE is the Created User",user)
+
+        // Check if `id` is correctly assigned
+        if (!user?.id) {
+            throw new ApiError(500, "Failed to retrieve user ID after registration.");
+        }
+        // Generate tokens
+        const { accessToken, refreshToken } = await generateTokens(user.id);
+
+        res.status(201).json(
+            new ApiResponse(201, { user, accessToken, refreshToken }, "User registered successfully")
+        );
+    } catch (error) {
+        // Log the error for debugging purposes
+        console.error("Error during user registration:", error);
+
+        // Handle specific error instances
+        if (error instanceof ApiError) {
+            res.status(error.statusCode).json({
+                status: "error",
+                statusCode: error.statusCode,
+                message: error.message,
+            });
+        } else {
+            // Handle unexpected errors
+            res.status(500).json({
+                status: "error",
+                statusCode: 500,
+                message: "An unexpected error occurred during user registration.",
+            });
+        }
     }
-
-    // Validate username uniqueness
-    const existingUsername = await User.findByUsername(username);
-    if (existingUsername) {
-        throw new ApiError(409, "Username is already taken");
-    }
-
-    // Validate phone format
-    if (!validatePhoneNumber(phone)) {
-        throw new ApiError(400, "Phone number is invalid. Please enter a valid phone number.");
-    }
-
-    // Validate address format
-    if (!validateAddress(address)) {
-        throw new ApiError(400, "Address is invalid. Please enter a valid address.");
-    }
-
-    // Check for existing user with the same details
-    const existingUser = await User.findDuplicateUser({ username, address, phone });
-    if (existingUser) {
-        throw new ApiError(409, "User with these details already exists. Please try logging in.");
-    }
-
-    // Handle avatar upload if provided
-    const avatarLocalPath = req.file?.path;
-    const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
-
-    // Create user
-    const user = await User.create({
-        username,
-        email,
-        address,
-        phone,
-        password,
-        avatar: avatar ? avatar.url : null,
-    });
-
-    // Generate tokens
-    const { accessToken, refreshToken } = await generateTokens(user.id);
-
-    res.status(201).json(
-        new ApiResponse(201, { user, accessToken, refreshToken }, "User registered successfully")
-    );
 });
 
 
@@ -135,6 +161,7 @@ export const loginUser = AsyncHandler(async (req, res) => {
     const { credential, password } = req.body;
 
     console.log(`Hitting login User: \n Credential: ${credential}`);
+    console.log("Request Body:", req.body);
 
     // Check if credential is provided
     if (!credential || !password) {
@@ -306,7 +333,7 @@ export const getUserInterestedEvents = AsyncHandler(async (req, res) => {
   }
 
   const interestedEvents = await knex('events')
-      .whereIn('id', user.interested_in)
+      .whereIn('event_id', user.interested_in)
       .select('*');
 
   res.status(200).json(new ApiResponse(200, interestedEvents, "Interested events fetched successfully"));
