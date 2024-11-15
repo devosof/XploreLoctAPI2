@@ -66,22 +66,49 @@ class Event {
     return knex('reviews').where({ event_id });
   }
 
+  // static async getTrendingEvents(limit) {
+  //   return knex('events')
+  //       .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
+  //       .select('events.*')
+  //       .count('users.id AS interest_count')
+  //       .groupBy('events.event_id')
+  //       .orderBy('interest_count', 'desc')
+  //       .limit(limit);
+  // }
+
   static async getTrendingEvents(limit) {
     return knex('events')
         .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
-        .select('events.*')
-        .count('users.id AS interest_count')
-        .groupBy('events.event_id')
+        .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
+        .select(
+            'events.*',
+            knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
+            knex.raw('COUNT(users.id) AS interest_count')
+        )
+        .groupBy('events.event_id', 'eventdetails.event_date')
         .orderBy('interest_count', 'desc')
         .limit(limit);
-  }
-
-  static async getRandomEvents(limit) {
-      return knex('events')
-          .select('*')
-          .orderByRaw('RANDOM()')
-          .limit(limit);
 }
+
+
+//   static async getRandomEvents(limit) {
+//       return knex('events')
+//           .select('*')
+//           .orderByRaw('RANDOM()')
+//           .limit(limit);
+// }
+
+static async getRandomEvents(limit) {
+  return knex('events')
+      .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
+      .select(
+          'events.*',
+          knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date')
+      )
+      .orderByRaw('RANDOM()')
+      .limit(limit);
+}
+
 }
 
 export default Event;
