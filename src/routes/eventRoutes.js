@@ -11,7 +11,8 @@ import {
   getCitiesByCountry,
   getLocationsByCity,
   searchEvents,
-  getTrendingEvents
+  getTrendingEvents,
+  getRandomEvents
 } from '../controllers/eventController.js';
 import {updateEventDetails} from '../controllers/eventDetailsController.js';
 // import { getAvailableSpeakers } from '../controllers/speakerController.js';
@@ -36,6 +37,7 @@ router.get('/locations/:city', getLocationsByCity);        // Get locations for 
 
 // Route to get trending events:
 router.get('/trending', getTrendingEvents);
+router.get('/random', getRandomEvents)
 
 // endPoint to update eventDetails
 router.put('/:event_id/details', verifyJWT, updateEventDetails); // Endpoint to update event details

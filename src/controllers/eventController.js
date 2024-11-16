@@ -1,6 +1,7 @@
 import Event from '../models/Event.js';
 import EventDetails from '../models/EventDetails.js';
 import Organizer from '../models/Organizers.js';
+import User from '../models/User.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -15,6 +16,8 @@ import knex from '../db/db.js';
 
 // controller to get the trending events:
 const TRENDING_LIMIT = 4;  // Maximum number of trending events to fetch
+
+const RANDOM_LIMIT = 6;
 
 export const getTrendingEvents = AsyncHandler(async (req, res) => {
     try {
@@ -33,6 +36,27 @@ export const getTrendingEvents = AsyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || 'Failed to fetch trending events');
     }
 });
+
+
+
+export const getRandomEvents = AsyncHandler(async (req, res) => {
+  try {
+      // Fetch up to RANDOM_LIMIT events sorted by interest count (highest first)
+      let randomEvents = await Event.getRandomEvents(RANDOM_LIMIT);
+      // // If no trending events, fetch random events instead
+      // if (trendingEvents.length === 0) {
+      //     trendingEvents = await Event.getRandomEvents(TRENDING_LIMIT);
+      // }
+      res
+      .status(200)
+      .json(new ApiResponse(200, randomEvents, 'Trending events fetched successfully'));
+
+  } catch (error) {
+      console.error("Error fetching trending events:", error.message);
+      throw new ApiError(500, error.message || 'Failed to fetch trending events');
+  }
+});
+
 
 
 
@@ -133,8 +157,18 @@ export const getEvent = AsyncHandler(async (req, res) => {
       //     throw new ApiError(404, 'Event details not found');
       // }
 
+      const organizer = await Organizer.findById(event.organizer_id)
+      if(!organizer){
+        throw new ApiError(401, "Organizer not found")
+      }
+      const organizerDetails = await User.findforOrganizer(organizer.user_id)
+      console.log("Organizer: ", organizerDetails);
+
+
       // Combine event and eventDetails data
-      const eventWithDetails = { ...event, details: eventDetails? eventDetails: "Event Details have not been updated yet" };
+      const eventWithDetails = { ...event, details: eventDetails? eventDetails: "Event Details have not been updated yet", organizer: organizerDetails? organizerDetails: "Organizer not available" };
+
+
 
       res.status(200).json(new ApiResponse(200, eventWithDetails, 'Event retrieved successfully'));
 
@@ -288,7 +322,7 @@ export const listEvents = AsyncHandler(async (req, res) => {
   
   console.log("THis is the query for fething events: ", events)
 
-  res.json(new ApiResponse(200, 'Events retrieved', events));
+  res.json(new ApiResponse(200, events, 'Events Retreived'));
 });
 
 export const searchEvents = AsyncHandler(async (req, res) => {

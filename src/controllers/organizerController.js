@@ -45,38 +45,82 @@ export const registerOrganizer = AsyncHandler(async (req, res) => {
 });
 
 // Get organizer details
+// export const getOrganizer = AsyncHandler(async (req, res) => {
+//     try {
+//       // Retrieve organizer details along with user and organization information
+//       const organizer = await knex('organizers')
+//         .join('users', 'organizers.user_id', '=', 'users.id') // Join with users table
+//         .join('organizations', 'organizers.organization_id', '=', 'organizations.organization_id') // Join with organizations table
+//         .select(
+//           'organizers.organizer_id',
+//           'organizers.user_id',
+//           'users.username as organizer_name', // Select user details
+//           'users.email as organizer_email',
+//           'users.phone as organizer_contact',
+//           'organizations.name as organization_name', // Select organization details
+//         )
+//         .where('organizers.user_id', req.user.id) // Filter by the logged-in user
+//         .first();
+  
+//       if (!organizer) {
+//         throw new ApiError(404, 'Organizer not found');
+//       }
+  
+//       // Return the limited details
+//       res.json(new ApiResponse(200, organizer, 'Organizer details retrieved'));
+//     } catch (error) {
+//       if (error instanceof ApiError) {
+//         return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
+//       }
+  
+//       console.error(error);
+//       res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+//     }
+//   });
+
+
 export const getOrganizer = AsyncHandler(async (req, res) => {
-    try {
-      // Retrieve organizer details along with user and organization information
-      const organizer = await knex('organizers')
-        .join('users', 'organizers.user_id', '=', 'users.id') // Join with users table
-        .join('organizations', 'organizers.organization_id', '=', 'organizations.organization_id') // Join with organizations table
-        .select(
-          'organizers.organizer_id',
-          'organizers.user_id',
-          'users.username as organizer_name', // Select user details
-          'users.email as organizer_email',
-          'users.phone as organizer_contact',
-          'organizations.name as organization_name', // Select organization details
+  try {
+    // Retrieve organizer details along with user and organization information
+    const organizer = await knex('organizers')
+      .join('users', 'organizers.user_id', '=', 'users.id') // Join with users table
+      .join('organizations', 'organizers.organization_id', '=', 'organizations.organization_id') // Join with organizations table
+      .select(
+        'organizers.organizer_id',
+        'organizers.user_id',
+        'users.username AS organizer_name', // Organizer's username
+        'users.email AS organizer_email',   // Organizer's email
+        'users.phone AS organizer_contact', // Organizer's contact
+        knex.raw(
+          'json_build_object(' +
+            '\'organization_id\', organizations.organization_id,' +
+            '\'name\', organizations.name,' +
+            '\'contact_email\', organizations.contact_email,' +
+            '\'contact_phone\', organizations.contact_phone,' +
+            '\'address\', organizations.address,' +
+            '\'logo_url\', organizations.logo_url' +
+          ') AS organization' // Build organization object, excluding organization_key
         )
-        .where('organizers.user_id', req.user.id) // Filter by the logged-in user
-        .first();
-  
-      if (!organizer) {
-        throw new ApiError(404, 'Organizer not found');
-      }
-  
-      // Return the limited details
-      res.json(new ApiResponse(200, organizer, 'Organizer details retrieved'));
-    } catch (error) {
-      if (error instanceof ApiError) {
-        return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
-      }
-  
-      console.error(error);
-      res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+      )
+      .where('organizers.user_id', req.user.id) // Filter by logged-in user
+      .first();
+
+    if (!organizer) {
+      throw new ApiError(404, 'Organizer not found');
     }
-  });
+
+    // Return the details with organization as an object
+    res.status(200).json(new ApiResponse(200, organizer, 'Organizer details retrieved successfully'));
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
+    }
+
+    console.error("Error fetching organizer details:", error);
+    res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+  }
+});
+
   
 
 

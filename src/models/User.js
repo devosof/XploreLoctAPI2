@@ -17,6 +17,13 @@ class User {
     return knex('users').where({ id }).first();
   }
 
+  static async findforOrganizer(id) {
+    return knex('users')
+        .where({ id })
+        .select('username', 'email', 'phone as contact') // Select only the required fields
+        .first(); // Return the first matching record
+  }
+
   // Find a user by email
   static async findByEmail(email) {
     // return knex('users').where({ email }).first();

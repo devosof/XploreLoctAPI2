@@ -1,5 +1,7 @@
 // controllers/userController.js
 import User from '../models/User.js';
+import Organizer from '../models/Organizers.js';
+import Speaker from '../models/Speakers.js';
 import { ApiError } from '../utils/ApiError.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
@@ -157,40 +159,40 @@ export const registerUser = AsyncHandler(async (req, res) => {
 //login user:
 // controllers/userController.js
 
-export const loginUser = AsyncHandler(async (req, res) => {
-    const { credential, password } = req.body;
+// export const loginUser = AsyncHandler(async (req, res) => {
+//     const { credential, password } = req.body;
 
-    console.log(`Hitting login User: \n Credential: ${credential}`);
-    console.log("Request Body:", req.body);
+//     console.log(`Hitting login User: \n Credential: ${credential}`);
+//     console.log("Request Body:", req.body);
 
-    // Check if credential is provided
-    if (!credential || !password) {
-        throw new ApiError(400, "Credential and password are required");
-    }
+//     // Check if credential is provided
+//     if (!credential || !password) {
+//         throw new ApiError(400, "Credential and password are required");
+//     }
 
-    // Determine if credential is email, username, or phone
-    let user;
-    if (credential.includes('@')) {
-        user = await User.findByEmail(credential);  // Treat credential as an email
-    } else if (/^\d+$/.test(credential)) {
-        user = await User.findByPhone(credential);  // Treat credential as a phone number
-    } else {
-        user = await User.findByUsername(credential);  // Treat credential as a username
-    }
+//     // Determine if credential is email, username, or phone
+//     let user;
+//     if (credential.includes('@')) {
+//         user = await User.findByEmail(credential);  // Treat credential as an email
+//     } else if (/^\d+$/.test(credential)) {
+//         user = await User.findByPhone(credential);  // Treat credential as a phone number
+//     } else {
+//         user = await User.findByUsername(credential);  // Treat credential as a username
+//     }
 
-    // Validate password
-    if (!user || !(await User.isPasswordCorrect(password, user.password))) {
-        throw new ApiError(401, "Invalid credentials");
-    }
+//     // Validate password
+//     if (!user || !(await User.isPasswordCorrect(password, user.password))) {
+//         throw new ApiError(401, "Invalid credentials");
+//     }
 
-    // Generate access and refresh tokens
-    const { accessToken, refreshToken } = await generateTokens(user.id);
+//     // Generate access and refresh tokens
+//     const { accessToken, refreshToken } = await generateTokens(user.id);
 
-    res.status(200)
-        .cookie("accessToken", accessToken, { httpOnly: true })
-        .cookie("refreshToken", refreshToken, { httpOnly: true })
-        .json(new ApiResponse(200, { user, accessToken, refreshToken }, "User logged in successfully"));
-});
+//     res.status(200)
+//         .cookie("accessToken", accessToken, { httpOnly: true })
+//         .cookie("refreshToken", refreshToken, { httpOnly: true })
+//         .json(new ApiResponse(200, { user, accessToken, refreshToken }, "User logged in successfully"));
+// });
 
 // export const registerUser = AsyncHandler(async (req, res) => {
 
@@ -246,6 +248,60 @@ export const loginUser = AsyncHandler(async (req, res) => {
 // logout user
 
 
+export const loginUser = AsyncHandler(async (req, res) => {
+    try {
+        const { credential, password } = req.body;
+
+        console.log(`Hitting login User: \n Credential: ${credential}`);
+        console.log("Request Body:", req.body);
+
+        // Check if credential and password are provided
+        if (!credential || !password) {
+            throw new ApiError(400, "Credential and password are required");
+        }
+
+        // Determine if credential is email, username, or phone
+        let user;
+        if (credential.includes('@')) {
+            user = await User.findByEmail(credential);  // Treat credential as an email
+        } else if (/^\d+$/.test(credential)) {
+            user = await User.findByPhone(credential);  // Treat credential as a phone number
+        } else {
+            user = await User.findByUsername(credential);  // Treat credential as a username
+        }
+
+        // Validate password
+        if (!user || !(await User.isPasswordCorrect(password, user.password))) {
+            throw new ApiError(401, "Invalid credentials");
+        }
+
+        // Check user roles
+        const roles = [];
+        const organizer = await Organizer.findByUserId(user.id);
+        if (organizer) roles.push("organizer");
+
+        const speaker = await Speaker.findByUserId(user.id);
+        if (speaker) roles.push("speaker");
+
+        // Generate access and refresh tokens
+        const { accessToken, refreshToken } = await generateTokens(user.id);
+
+        // Response user object with only necessary fields
+        const responseUser = {
+            id: user.id,
+            username: user.username,
+            avatar_url: user.avatar,
+            role: roles.length > 0 ? roles : null, // Add roles if available
+        };
+
+        res.status(200)
+            .cookie("accessToken", accessToken, { httpOnly: true })
+            .cookie("refreshToken", refreshToken, { httpOnly: true })
+            .json(new ApiResponse(200, { user: responseUser, accessToken, refreshToken }, "User logged in successfully"));
+    } catch (error) {
+        throw new ApiError(500, error.message || "Failed to login user");
+    }
+});
 
 
 
@@ -272,7 +328,7 @@ export const getCurrentUserProfile = AsyncHandler(async (req, res) => {
 
 // Update user profile
 export const updateUserProfile = AsyncHandler(async (req, res) => {
-    const { email, phone, district, city, country, town, address, profession, age, education } = req.body;
+    const { email, phone, district, city, country, town, profession, age, education } = req.body;
     const avatarLocalPath = req.file?.path;
     const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
 
@@ -283,8 +339,7 @@ export const updateUserProfile = AsyncHandler(async (req, res) => {
       district = ${district}, 
       city = ${city}, 
       country = ${country}, 
-      town = ${town}, 
-      address = ${address}, 
+      town = ${town},  
       profession = ${profession}, 
       age = ${age}, 
       education = ${education}`
@@ -297,7 +352,6 @@ export const updateUserProfile = AsyncHandler(async (req, res) => {
         city,
         country,
         town,
-        address,
         profession,
         age,
         education,
@@ -323,22 +377,54 @@ export const updateUserProfile = AsyncHandler(async (req, res) => {
 // });
 
 // Get user's interested events 
+// export const getUserInterestedEvents = AsyncHandler(async (req, res) => {
+//   const user = await User.findById(req.user.id);
+//   if (!user) throw new ApiError(404, "User not found");
+
+//   // Check if interested_in is an array and has elements
+//   if (!Array.isArray(user.interested_in) || user.interested_in.length === 0) {
+//       return res.status(200).json(new ApiResponse(200, [], "No interested events found"));
+//   }
+
+//   const interestedEvents = await knex('events')
+//       .whereIn('event_id', user.interested_in)
+//       .select('*');
+
+//   res.status(200).json(new ApiResponse(200, interestedEvents, "Interested events fetched successfully"));
+// });
 export const getUserInterestedEvents = AsyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id);
-  if (!user) throw new ApiError(404, "User not found");
-
-  // Check if interested_in is an array and has elements
-  if (!Array.isArray(user.interested_in) || user.interested_in.length === 0) {
-      return res.status(200).json(new ApiResponse(200, [], "No interested events found"));
-  }
-
-  const interestedEvents = await knex('events')
-      .whereIn('event_id', user.interested_in)
-      .select('*');
-
-  res.status(200).json(new ApiResponse(200, interestedEvents, "Interested events fetched successfully"));
-});
-
+    try {
+      // Fetch the user by ID
+      const user = await User.findById(req.user.id);
+      if (!user) throw new ApiError(404, "User not found");
+  
+      // Check if interested_in is an array and has elements
+      if (!Array.isArray(user.interested_in) || user.interested_in.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "No interested events found"));
+      }
+  
+      // Fetch events with detailed data
+      const interestedEvents = await knex('events')
+        .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
+        .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
+        .select(
+          'events.event_id',
+          'events.name',
+          'events.description',
+          'events.address',
+          knex.raw("COALESCE(eventdetails.event_date::text, 'Date not updated yet') AS event_date"),
+          knex.raw('COUNT(users.id) AS interest_count')
+        )
+        .whereIn('events.event_id', user.interested_in) // Fetch only interested events
+        .groupBy('events.event_id', 'eventdetails.event_date')
+        .orderBy('interest_count', 'desc'); // Order by interest count
+  
+      res.status(200).json(new ApiResponse(200, interestedEvents, "Interested events fetched successfully"));
+    } catch (error) {
+      throw new ApiError(500, error.message || "Failed to fetch interested events");
+    }
+  });
+  
 
 
 // to mark or unmark an event as interested by the user
