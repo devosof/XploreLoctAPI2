@@ -7,6 +7,8 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import knex from '../db/db.js';
 
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
+
 // // Create event (restricted to organizers)
 // export const createEvent = AsyncHandler(async (req, res) => {
 //   if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can create events');
@@ -63,64 +65,105 @@ export const getRandomEvents = AsyncHandler(async (req, res) => {
 
 export const createEvent = AsyncHandler(async (req, res) => {
   try {
-      const { name, description, country, city, district, town, place, address, latitude, longitude, google_maps_link, frequency, capacity, gender_allowance, time, duration, image_url, speakers, event_date, attendee_count } = req.body;
+    const {
+      name,
+      description,
+      country,
+      city,
+      district,
+      town,
+      place,
+      address,
+      latitude,
+      longitude,
+      google_maps_link,
+      frequency,
+      capacity,
+      gender_allowance,
+      time,
+      duration,
+      image_url,
+      speakers = [], // Default to an empty array if not provided
+      event_date,
+      attendee_count,
+    } = req.body;
 
-      // Check if user is an organizer
-      if (!req.user.isOrganizer) {
-          throw new ApiError(403, 'Only organizers can create events');
-      }
+    // Check if user is an organizer
+    if (!req.user.isOrganizer) {
+      throw new ApiError(403, 'Only organizers can create events');
+    }
 
-      // Fetch the organizer_id from the organizers table for the authenticated user
-      const organizer = await Organizer.findByUserId(req.user.id);
-      if (!organizer) {
-          throw new ApiError(404, 'Organizer not found for the current user');
-      }
+    // Fetch the organizer_id from the organizers table for the authenticated user
+    const organizer = await Organizer.findByUserId(req.user.id);
+    if (!organizer) {
+      throw new ApiError(404, 'Organizer not found for the current user');
+    }
 
-      // Duplicate event check (based on fields in the events table)
-      const existingEvent = await Event.findSimilar({ name, event_date, place, city, country });
-      if (existingEvent) {
-          throw new ApiError(409, 'An event with these details already exists');
-      }
+    // Duplicate event check (based on fields in the events table)
+    const existingEvent = await Event.findSimilar({
+      name,
+      place,
+      city,
+      country,
+      event_date,
+    });
+    if (existingEvent) {
+      throw new ApiError(409, 'An event with these details already exists');
+    }
 
-      // Create the event in the events table
-      const [newEvent] = await Event.create({
-          name,
-          description,
-          country,
-          city,
-          district,
-          town,
-          place,
-          address,
-          latitude,
-          longitude,
-          google_maps_link,
-          frequency,
-          capacity,
-          gender_allowance,
-          time,
-          duration,
-          image_url,
-          organizer_id: organizer.organizer_id, // Use the organizer_id from the organizers table
-      });
+    // Handle image upload if provided
+    let uploadedImageUrl = null;
+    if (req.file) {
+      const uploadedImage = await uploadOnCloudinary(req.file.path);
+      uploadedImageUrl = uploadedImage.url;
+    }
 
-      console.log("This is the created Event: ", newEvent)
+    // Create the event in the events table
+    const [newEvent] = await Event.create({
+      name,
+      description,
+      country,
+      city,
+      district,
+      town,
+      place,
+      address,
+      latitude,
+      longitude,
+      google_maps_link,
+      frequency,
+      capacity,
+      gender_allowance,
+      time,
+      duration,
+      image_url: uploadedImageUrl, // Use uploaded image URL
+      organizer_id: organizer.organizer_id, // Use the organizer_id from the organizers table
+    });
 
-      // Create associated event details in the eventDetails table
-      const eventDetails = await EventDetails.create({
-          event_id: newEvent.event_id,
-          organizer_id: organizer.organizer_id, // Associate eventDetails with the organizer
-          event_date: event_date,                     // Date of the event
-          eventspeakers: speakers, // Array of speaker IDs
-          attendee_count: attendee_count            // Number of attendees (as a numeric value)
-      });
+    console.log('This is the created Event: ', newEvent);
 
-      res.status(201).json(new ApiResponse(201, { newEvent, eventDetails }, 'Event and details created successfully'));
+    // Ensure speakers are formatted as a PostgreSQL array
+    const formattedSpeakers = `{${speakers.join(',')}}`;
 
+    // Create associated event details in the eventDetails table
+    const eventDetails = await EventDetails.create({
+      event_id: newEvent.event_id,
+      organizer_id: organizer.organizer_id, // Associate eventDetails with the organizer
+      event_date: event_date, // Date of the event
+      eventspeakers: formattedSpeakers, // Properly formatted array of speaker IDs
+      attendee_count: attendee_count, // Number of attendees (as a numeric value)
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, { newEvent, eventDetails }, 'Event and details created successfully'));
   } catch (error) {
-      throw new ApiError(500, error.message || 'Failed to create event');
+    console.error('Error creating event:', error);
+    throw new ApiError(500, error.message || 'Failed to create event');
   }
 });
+
+
 
 
 // export const createEvent = AsyncHandler(async (req, res) => {

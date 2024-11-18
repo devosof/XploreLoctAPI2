@@ -17,12 +17,13 @@ import {
 import {updateEventDetails} from '../controllers/eventDetailsController.js';
 // import { getAvailableSpeakers } from '../controllers/speakerController.js';
 import verifyJWT from '../middlewares/auth.middleware.js';
+import { upload } from '../middlewares/multer.middleware.js';
 
 const router = express.Router();
 
 
 // Route to create events:
-router.post('/create', verifyJWT, createEvent);             // Restricted to organizers
+router.post('/create', verifyJWT, upload.single('image'), createEvent);             // Restricted to organizers
 
 // Route to list events:
 router.get('/', listEvents);                          // Public route to list events with filters
