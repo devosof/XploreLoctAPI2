@@ -30,12 +30,13 @@ const uploadOnCloudinary = async (localFilePath) => {
 }
 
 
-const deleteFromCloudinary = async (cloudinaryFile) => {
+const deleteFromCloudinary = async (public_id) => {
     try {
-        if(!cloudinaryFile) return null
+        // if(!cloudinaryFile) return null
 
         // get the public id of the old cloudinary file:
-        const publicId = cloudinaryFile["public_id"]
+        // const publicId = cloudinaryFile["public_id"]
+        const publicId = public_id
         const response = cloudinary.v2.uploader
                             .destroy(publicId)
                             // .then(result=>console.log(result));

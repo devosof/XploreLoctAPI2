@@ -52,7 +52,7 @@ router.get('/:id/reviews', getEventReviews);          // Public route to view ev
 
 // Routes to get an event, update and detlete (for organizer)
 router.get('/:id', getEvent);                         // Public route to get event details
-router.put('/:id', verifyJWT, updateEvent);           // Restricted to organizers
+router.put('/:id', verifyJWT,  upload.single('image'), updateEvent);           // Restricted to organizers
 router.delete('/:id', verifyJWT, deleteEvent);        // Restricted to organizers
 
 export default router;

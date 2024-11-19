@@ -32,6 +32,7 @@ class Event {
             'events.name',
             'events.description',
             'events.address',
+            'events.image_url',
             knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
             knex.raw('COUNT(users.id) AS interest_count')
         )
@@ -131,7 +132,7 @@ class Event {
         .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
         .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
         .select(
-            'events.event_id','events.name', 'events.description', 'events.address',
+            'events.event_id','events.name', 'events.description', 'events.address', 'events.image_url',
             knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
             knex.raw('COUNT(users.id) AS interest_count')
         )
@@ -153,7 +154,7 @@ static async getRandomEvents(limit) {
       .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
       .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
       .select(
-          'events.event_id','events.name', 'events.description', 'events.address',
+          'events.event_id','events.name', 'events.description', 'events.address', 'events.image_url',
           knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
           knex.raw('COUNT(users.id) AS interest_count')
       )

@@ -76,83 +76,83 @@ const validateAddress = (address) => {
 };
 
 // Register a new user
-export const registerUser = AsyncHandler(async (req, res) => {
-    try {
-        const { username, email, address, phone, password } = req.body;
+// export const registerUser = AsyncHandler(async (req, res) => {
+//     try {
+//         const { username, email, address, phone, password } = req.body;
 
-        // Check if required fields are present
-        if (!username || !email || !phone || !password) {
-            throw new ApiError(400, "Username, email, phone, and password are required");
-        }
+//         // Check if required fields are present
+//         if (!username || !email || !phone || !password) {
+//             throw new ApiError(400, "Username, email, phone, and password are required");
+//         }
 
-        // Validate username uniqueness
-        const existingUsername = await User.findByUsername(username);
-        if (existingUsername) {
-            throw new ApiError(409, "Username is already taken");
-        }
+//         // Validate username uniqueness
+//         const existingUsername = await User.findByUsername(username);
+//         if (existingUsername) {
+//             throw new ApiError(409, "Username is already taken");
+//         }
 
-        // Validate phone format
-        if (!validatePhoneNumber(phone)) {
-            throw new ApiError(400, "Phone number is invalid. Please enter a valid phone number.");
-        }
+//         // Validate phone format
+//         if (!validatePhoneNumber(phone)) {
+//             throw new ApiError(400, "Phone number is invalid. Please enter a valid phone number.");
+//         }
 
-        // Validate address format
-        if (!validateAddress(address)) {
-            throw new ApiError(400, "Address is invalid. Please enter a valid address.");
-        }
+//         // Validate address format
+//         if (!validateAddress(address)) {
+//             throw new ApiError(400, "Address is invalid. Please enter a valid address.");
+//         }
 
-        // Check for existing user with the same details
-        const existingUser = await User.findDuplicateUser({ username, email, phone });
-        if (existingUser) {
-            throw new ApiError(409, "User with these details already exists. Please try logging in.");
-        }
+//         // Check for existing user with the same details
+//         const existingUser = await User.findDuplicateUser({ username, email, phone });
+//         if (existingUser) {
+//             throw new ApiError(409, "User with these details already exists. Please try logging in.");
+//         }
 
-        // Handle avatar upload if provided
-        const avatarLocalPath = req.file?.path;
-        const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
+//         // Handle avatar upload if provided
+//         const avatarLocalPath = req.file?.path;
+//         const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
 
-        // Create user
-        const [user] = await User.create({
-            username,
-            email,
-            phone,
-            password,
-            avatar: avatar ? avatar.url : null,
-        });
+//         // Create user
+//         const [user] = await User.create({
+//             username,
+//             email,
+//             phone,
+//             password,
+//             avatar: avatar ? avatar.url : null,
+//         });
 
-        console.log("HERE is the Created User",user)
+//         console.log("HERE is the Created User",user)
 
-        // Check if `id` is correctly assigned
-        if (!user?.id) {
-            throw new ApiError(500, "Failed to retrieve user ID after registration.");
-        }
-        // Generate tokens
-        const { accessToken, refreshToken } = await generateTokens(user.id);
+//         // Check if `id` is correctly assigned
+//         if (!user?.id) {
+//             throw new ApiError(500, "Failed to retrieve user ID after registration.");
+//         }
+//         // Generate tokens
+//         const { accessToken, refreshToken } = await generateTokens(user.id);
 
-        res.status(201).json(
-            new ApiResponse(201, { user, accessToken, refreshToken }, "User registered successfully")
-        );
-    } catch (error) {
-        // Log the error for debugging purposes
-        console.error("Error during user registration:", error);
+//         res.status(201).json(
+//             new ApiResponse(201, { user, accessToken, refreshToken }, "User registered successfully")
+//         );
+//     } catch (error) {
+//         // Log the error for debugging purposes
+//         console.error("Error during user registration:", error);
 
-        // Handle specific error instances
-        if (error instanceof ApiError) {
-            res.status(error.statusCode).json({
-                status: "error",
-                statusCode: error.statusCode,
-                message: error.message,
-            });
-        } else {
-            // Handle unexpected errors
-            res.status(500).json({
-                status: "error",
-                statusCode: 500,
-                message: "An unexpected error occurred during user registration.",
-            });
-        }
-    }
-});
+//         // Handle specific error instances
+//         if (error instanceof ApiError) {
+//             res.status(error.statusCode).json({
+//                 status: "error",
+//                 statusCode: error.statusCode,
+//                 message: error.message,
+//             });
+//         } else {
+//             // Handle unexpected errors
+//             res.status(500).json({
+//                 status: "error",
+//                 statusCode: 500,
+//                 message: "An unexpected error occurred during user registration.",
+//             });
+//         }
+//     }
+// });
 
 
 
@@ -246,6 +246,95 @@ export const registerUser = AsyncHandler(async (req, res) => {
 
 
 // logout user
+
+export const registerUser = AsyncHandler(async (req, res) => {
+    try {
+        const { username, email, country, phone, city, district, town, password } = req.body;
+
+        // Check if required fields are present
+        if (!username || !email || !country || !phone || !city || !district || !town || !password) {
+            throw new ApiError(400, "Username, email, country, phone, city, district, town, and password are required");
+        }
+
+        // Validate username uniqueness
+        const existingUsername = await User.findByUsername(username);
+        if (existingUsername) {
+            throw new ApiError(409, "Username is already taken");
+        }
+
+        // Validate email uniqueness
+        const existingEmail = await User.findByEmail(email);
+        if (existingEmail) {
+            throw new ApiError(409, "Email is already taken");
+        }
+
+        // Validate phone uniqueness
+        const existingPhone = await User.findByPhone(phone);
+        if (existingPhone) {
+            throw new ApiError(409, "Phone number is already taken");
+        }
+
+        // Handle avatar upload if provided
+        const avatarLocalPath = req.file?.path;
+         
+        const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+        // Create user
+        const [user] = await User.create({
+            username,
+            email,
+            phone,
+            country,
+            city,
+            district,
+            town,
+            password,
+            avatar: avatar.url,
+        });
+
+        console.log("HERE is the Created User", user);
+
+        // Check if `id` is correctly assigned
+        if (!user?.id) {
+            throw new ApiError(500, "Failed to retrieve user ID after registration.");
+        }
+
+        // Generate tokens
+        const { accessToken, refreshToken } = await generateTokens(user.id);
+
+        const responseUser = {
+            username: user?.username,
+            email: user?.email,
+            phone: user?.phone,
+            avatar: user?.avatar,
+        }
+
+        res.status(201).json(
+            new ApiResponse(201, { responseUser, accessToken, refreshToken }, "User registered successfully")
+        );
+    } catch (error) {
+        // Log the error for debugging purposes
+        console.error("Error during user registration:", error);
+
+        // Handle specific error instances
+        if (error instanceof ApiError) {
+            res.status(error.statusCode).json({
+                status: "error",
+                statusCode: error.statusCode,
+                message: error.message,
+            });
+        } else {
+            // Handle unexpected errors
+            res.status(500).json({
+                status: "error",
+                statusCode: 500,
+                message: "An unexpected error occurred during user registration.",
+            });
+        }
+    }
+});
+
+
 
 
 export const loginUser = AsyncHandler(async (req, res) => {

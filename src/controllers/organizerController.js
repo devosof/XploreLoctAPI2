@@ -121,6 +121,61 @@ export const getOrganizer = AsyncHandler(async (req, res) => {
   }
 });
 
+
+
+
+export const getOrganizerEvents = AsyncHandler(async (req, res) => {
+  try {
+    // Fetch the organizer record for the current user
+    const organizer = await knex('organizers')
+      .where({ user_id: req.user.id })
+      .first();
+
+    if (!organizer) {
+      throw new ApiError(403, "You are not registered as an organizer.");
+    }
+
+    // Fetch all events created by this organizer
+    const events = await knex('events')
+      .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
+      .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
+      .select(
+        'events.event_id',
+        'events.name',
+        'events.description',
+        'events.capacity',
+        'events.address',
+        'events.image_url',
+        'events.time',
+        'events.frequency',
+        knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
+        knex.raw('COUNT(users.id) AS interest_count')
+      )
+      .where({ 'events.organizer_id': organizer.organizer_id }) // Filter by organizer ID
+      .groupBy('events.event_id', 'eventdetails.event_date') // Group by event ID and event_date
+      .orderBy('events.event_id', 'desc'); // Order by event ID (descending)
+
+    res.status(200).json(new ApiResponse(200, events, "Events fetched successfully"));
+  } catch (error) {
+    console.error("Error fetching organizer events:", error);
+
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({
+        status: "error",
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      status: "error",
+      statusCode: 500,
+      message: "An unexpected error occurred while fetching events.",
+    });
+  }
+});
+
+
   
 
 

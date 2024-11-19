@@ -40,15 +40,29 @@ class EventDetail {
   //     .returning('*');
   // }
 
-  static async update(event_id, organizer_id, { eventspeakers, event_date, attendee_count }) {
-    return knex('eventdetails')
-        .where({ event_id, organizer_id })
-        .update({
-            eventspeakers: knex.raw('?', [eventspeakers]), // Ensure it's handled as an array
-            event_date,
-            attendee_count
-        })
-        .returning('*');
+//   static async update(event_id, organizer_id, { eventspeakers, event_date, attendee_count }) {
+//     return knex('eventdetails')
+//         .where({ event_id, organizer_id })
+//         .update({
+//             eventspeakers: knex.raw('?', [eventspeakers]), // Ensure it's handled as an array
+//             event_date,
+//             attendee_count
+//         })
+//         .returning('*');
+// }
+
+static async update(event_id, organizer_id, { eventspeakers, event_date, attendee_count }) {
+  // Parse the eventspeakers string back to an array if it's a string
+  const speakers = typeof eventspeakers === 'string' ? JSON.parse(eventspeakers) : eventspeakers;
+  
+  return knex('eventdetails')
+      .where({ event_id, organizer_id })
+      .update({
+          eventspeakers: speakers, // Now it should be an array
+          event_date,
+          attendee_count
+      })
+      .returning('*');
 }
 
 

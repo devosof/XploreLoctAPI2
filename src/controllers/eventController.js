@@ -7,7 +7,7 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import knex from '../db/db.js';
 
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { deleteFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js';
 
 // // Create event (restricted to organizers)
 // export const createEvent = AsyncHandler(async (req, res) => {
@@ -233,7 +233,6 @@ export const getEvent = AsyncHandler(async (req, res) => {
 
 
 
-// Update event (restricted to the organizer who created it)
 export const updateEvent = AsyncHandler(async (req, res) => {
   try {
     if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can update events');
@@ -251,17 +250,65 @@ export const updateEvent = AsyncHandler(async (req, res) => {
       throw new ApiError(403, 'You do not have permission to update this event');
     }
 
+    // Handle image upload and deletion
+    let updatedData = { ...req.body }; // Copy request body for updates
+    if (req.file) {
+      // Upload the new image
+      const uploadedImage = await uploadOnCloudinary(req.file.path);
+      updatedData.image_url = uploadedImage.url;
+
+      // Delete the previous image from Cloudinary if it exists
+      if (event.image_url) {
+        const publicId = event.image_url.split('/').pop().split('.')[0]; // Extract publicId from URL
+        const deleteResponse = await deleteFromCloudinary(publicId);
+        if(deleteResponse){
+          console.log("File deleted successfully from cloudinary")
+        }
+      }
+    }
+
     // Proceed to update the event
-    const updatedEvent = await Event.update(req.params.id, req.body);
-    res.json(new ApiResponse(200, updatedEvent, 'Event updated'));
+    const updatedEvent = await Event.update(req.params.id, updatedData);
+    res.json(new ApiResponse(200, updatedEvent, 'Event updated successfully'));
   } catch (error) {
     if (error instanceof ApiError) {
       return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
     }
     console.error(error);
-    res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+    res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred while updating the event'));
   }
 });
+
+
+// Update event (restricted to the organizer who created it)
+// export const updateEvent = AsyncHandler(async (req, res) => {
+//   try {
+//     if (!req.user.isOrganizer) throw new ApiError(403, 'Only organizers can update events');
+
+//     // Find the organizer associated with the current user
+//     const currentOrganizer = await Organizer.findByUserId(req.user.id);
+//     if (!currentOrganizer) throw new ApiError(404, 'Organizer not found');
+
+//     // Find the event to ensure it exists and get the organizer_id
+//     const event = await Event.findById(req.params.id);
+//     if (!event) throw new ApiError(404, 'Event not found');
+
+//     // Check if the current organizer is the one who created the event
+//     if (event.organizer_id !== currentOrganizer.organizer_id) {
+//       throw new ApiError(403, 'You do not have permission to update this event');
+//     }
+
+//     // Proceed to update the event
+//     const updatedEvent = await Event.update(req.params.id, req.body);
+//     res.json(new ApiResponse(200, updatedEvent, 'Event updated'));
+//   } catch (error) {
+//     if (error instanceof ApiError) {
+//       return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
+//     }
+//     console.error(error);
+//     res.status(500).json(new ApiResponse(500, null, 'An unexpected error occurred'));
+//   }
+// });
 
 // Delete event (restricted to the organizer who created it)
 export const deleteEvent = AsyncHandler(async (req, res) => {
@@ -368,20 +415,20 @@ export const listEvents = AsyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, events, 'Events Retreived'));
 });
 
-export const searchEvents = AsyncHandler(async (req, res) => {
-  const { query } = req.query;  // `query` holds the search term from the request
-  if (!query) throw new ApiError(400, 'Search query is required');
+// export const searchEvents = AsyncHandler(async (req, res) => {
+//   const { query } = req.query;  // `query` holds the search term from the request
+//   if (!query) throw new ApiError(400, 'Search query is required');
 
-  const events = await knex('events')
-    .whereILike('name', `%${query}%`)
-    .orWhereILike('description', `%${query}%`)
-    .orWhereILike('country', `%${query}%`)
-    .orWhereILike('city', `%${query}%`)
-    .orWhereILike('place', `%${query}%`)
-    .select('*');
+//   const events = await knex('events')
+//     .whereILike('name', `%${query}%`)
+//     .orWhereILike('description', `%${query}%`)
+//     .orWhereILike('country', `%${query}%`)
+//     .orWhereILike('city', `%${query}%`)
+//     .orWhereILike('place', `%${query}%`)
+//     .select('*');
 
-  res.json(new ApiResponse(200, events, 'Search results'));
-});
+//   res.json(new ApiResponse(200, events, 'Search results'));
+// });
 
 
 // export const searchEvents = AsyncHandler(async (req, res) => {
@@ -393,6 +440,45 @@ export const searchEvents = AsyncHandler(async (req, res) => {
 
 
 // Add review to event
+
+
+export const searchEvents = AsyncHandler(async (req, res) => {
+  try {
+    const { query } = req.query; // `query` holds the search term from the request
+    if (!query) throw new ApiError(400, 'Search query is required');
+
+    const events = await knex('events')
+      .leftJoin('users', knex.raw('events.event_id = ANY(users.interested_in)'))
+      .leftJoin('eventdetails', 'events.event_id', 'eventdetails.event_id')
+      .select(
+        'events.event_id',
+        'events.name',
+        'events.description',
+        'events.address',
+        'events.image_url',
+        knex.raw('COALESCE(eventdetails.event_date::text, \'Date not updated yet\') AS event_date'),
+        knex.raw('COUNT(users.id) AS interest_count')
+      )
+      .whereILike('events.name', `%${query}%`)
+      .orWhereILike('events.description', `%${query}%`)
+      .orWhereILike('events.country', `%${query}%`)
+      .orWhereILike('events.city', `%${query}%`)
+      .orWhereILike('events.place', `%${query}%`)
+      .groupBy('events.event_id', 'eventdetails.event_date')
+      .orderBy('interest_count', 'desc');
+
+    res.json(new ApiResponse(200, events, 'Search results'));
+  } catch (error) {
+    console.error('Error searching events:', error);
+    throw new ApiError(500, error.message || 'Failed to retrieve search results');
+  }
+});
+
+
+
+
+
+
 export const addReview = AsyncHandler(async (req, res) => {
   const { rating, comment } = req.body;
   const newReview = await Event.addReview(req.params.id, req.user.id, { rating, comment });
