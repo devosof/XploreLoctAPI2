@@ -20,36 +20,96 @@ const generateTokens = async (userId) => {
 
 
 // Refresh Access Token
+// export const refreshAccessToken = AsyncHandler(async (req, res) => {
+//   const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+//   if (!incomingRefreshToken) {
+//       throw new ApiError(401, "Refresh token is required");
+//   }
+
+//   try {
+//       const decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+//       const user = await User.findById(decoded.id);
+
+//       if (!user || user.refreshToken !== incomingRefreshToken) {
+//           throw new ApiError(403, "Invalid refresh token");
+//       }
+
+//       const newAccessToken = User.generateAccessToken(user);
+//       const newRefreshToken = User.generateRefreshToken(user);
+
+//       await User.saveRefreshToken(user.id, newRefreshToken);
+
+//       const options = { httpOnly: true, secure: true };
+//       res
+//           .status(200)
+//           .cookie("accessToken", newAccessToken, options)
+//           .cookie("refreshToken", newRefreshToken, options)
+//           .json(new ApiResponse(200, { accessToken: newAccessToken, refreshToken: newRefreshToken }, "Access token refreshed successfully"));
+//   } catch (error) {
+//       throw new ApiError(401, "Invalid refresh token");
+//   }
+// });
+
 export const refreshAccessToken = AsyncHandler(async (req, res) => {
-  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
-  if (!incomingRefreshToken) {
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+  
+    console.log("Incoming refresh token:", incomingRefreshToken ? "Present" : "Missing");
+  
+    if (!incomingRefreshToken) {
       throw new ApiError(401, "Refresh token is required");
-  }
-
-  try {
+    }
+  
+    try {
       const decoded = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
       const user = await User.findById(decoded.id);
-
-      if (!user || user.refreshToken !== incomingRefreshToken) {
-          throw new ApiError(403, "Invalid refresh token");
+  
+      console.log("User found:", user ? "Yes" : "No");
+      console.log("user : ", user)
+      console.log("user refreshToken ", user?.refreshToken)
+      console.log("incoming refreshToken ", incomingRefreshToken)
+      console.log("Token match:", user?.refreshToken === incomingRefreshToken ? "Yes" : "No");
+  
+      if (!user) {
+        throw new ApiError(401, "User not found");
       }
-
+  
+      if (user.refreshToken !== incomingRefreshToken) {
+        throw new ApiError(401, "Refresh token does not match");
+      }
+  
       const newAccessToken = User.generateAccessToken(user);
       const newRefreshToken = User.generateRefreshToken(user);
-
+  
       await User.saveRefreshToken(user.id, newRefreshToken);
-
-      const options = { httpOnly: true, secure: true };
-      res
-          .status(200)
-          .cookie("accessToken", newAccessToken, options)
-          .cookie("refreshToken", newRefreshToken, options)
-          .json(new ApiResponse(200, { accessToken: newAccessToken, refreshToken: newRefreshToken }, "Access token refreshed successfully"));
-  } catch (error) {
-      throw new ApiError(401, "Invalid refresh token");
-  }
-});
+  
+      const options = {
+        httpOnly: true,
+        secure: true, // Only use secure in production
+        sameSite: 'strict',
+        // maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      };
+  
+      return res
+        .status(200)
+        .cookie("accessToken", newAccessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+          new ApiResponse(
+            200,
+            {
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken
+            },
+            "Access token refreshed successfully"
+          )
+        );
+    } catch (error) {
+      console.error("Refresh token error:", error);
+      throw new ApiError(401, error.message || "Invalid refresh token");
+    }
+  });
 
 
 // Register a new user
@@ -374,6 +434,8 @@ export const loginUser = AsyncHandler(async (req, res) => {
 
         // Generate access and refresh tokens
         const { accessToken, refreshToken } = await generateTokens(user.id);
+        console.log("access token ", accessToken)
+        console.log("refresh token ", refreshToken)
 
         // Response user object with only necessary fields
         const responseUser = {

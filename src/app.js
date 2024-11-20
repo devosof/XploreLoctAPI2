@@ -13,18 +13,26 @@ const app = express();
 
 const allowedOrigins = ["http://localhost:5173"]; // Replace with your frontend's origin
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (allowedOrigins.includes(origin) || !origin) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // Allow credentials (cookies, headers)
-  })
-);
+app.use(cors({
+  origin: 'http://localhost:5173', // your frontend URL
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (allowedOrigins.includes(origin) || !origin) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true, // Allow credentials (cookies, headers)
+//   })
+// );
+
+
 
 // app.use(cors({
 //     origin: process.env.CORS_ORIGIN,
