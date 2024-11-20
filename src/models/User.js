@@ -13,9 +13,32 @@ class User {
   }
 
   // Find a user by ID
+  // static async findById(id) {
+  //   return knex('users').where({ id }).first();
+  // }
   static async findById(id) {
-    return knex('users').where({ id }).first();
-  }
+    return knex('users')
+        .where({ id })
+        .select(
+            'id',
+            'username',
+            'email',
+            'phone',
+            'country',
+            'city',
+            'district',
+            'town',
+            'address',
+            'profession',
+            'education',
+            'age',
+            'refreshToken',
+            'avatar',
+            'interested_in'
+        )
+        .first();
+      }
+
 
   static async findforOrganizer(id) {
     return knex('users')

@@ -1,6 +1,8 @@
 import {v2 as cloudinary} from "cloudinary";
 import fs from "fs";
+import dotenv from 'dotenv';
 
+dotenv.config();
 
 // Configuration
 cloudinary.config({ 
@@ -10,7 +12,7 @@ cloudinary.config({
 });
 
 
-const uploadOnCloudinary = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath, options = {}) => {
     try {
         if (!localFilePath) return null 
         // upload the file on cloudinary
@@ -24,7 +26,9 @@ const uploadOnCloudinary = async (localFilePath) => {
         fs.unlinkSync(localFilePath)
         return response
     } catch (error) {
-        fs.unlinkSync(localFilePath) // remove the locally saved temp file as the upload operation got failed
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          } // remove the locally saved temp file as the upload operation got failed
         return null
     }
 }
@@ -36,10 +40,10 @@ const deleteFromCloudinary = async (public_id) => {
 
         // get the public id of the old cloudinary file:
         // const publicId = cloudinaryFile["public_id"]
+        if(!public_id) return null
+
         const publicId = public_id
-        const response = cloudinary.v2.uploader
-                            .destroy(publicId)
-                            // .then(result=>console.log(result));
+        const response = cloudinary.uploader.destroy(publicId).then(result=>console.log(result));
         return response
 
     } catch (error) {

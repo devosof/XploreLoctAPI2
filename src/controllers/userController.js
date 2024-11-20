@@ -5,7 +5,8 @@ import Speaker from '../models/Speakers.js';
 import { ApiError } from '../utils/ApiError.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { deleteFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js';
+import { extractPublicId } from 'cloudinary-build-url'
 import knex from '../db/db.js';
 import jwt from 'jsonwebtoken';
 
@@ -472,16 +473,46 @@ export const logoutUser = AsyncHandler(async (req, res) => {
 
 // Get current user's profile
 export const getCurrentUserProfile = AsyncHandler(async (req, res) => {
+    // Check user roles
+    const roles = [];
+    // find the current user
     const user = await User.findById(req.user.id);
+    // find if user is organizer
+    const organizer = await Organizer.findByUserId(user.id);
+    if (organizer) roles.push("organizer");
+    // find if user is speaker
+    const speaker = await Speaker.findByUserId(user.id);
+    if (speaker) roles.push("speaker");
     if (!user) throw new ApiError(404, "User not found");
-    res.status(200).json(new ApiResponse(200, user, "User profile fetched successfully"));
+    const responseUser = {
+        ...user,
+        roles
+    }
+    console.log("response User: ", responseUser)
+    res.status(200).json(new ApiResponse(200, responseUser, "User profile fetched successfully"));
 });
 
 // Update user profile
 export const updateUserProfile = AsyncHandler(async (req, res) => {
-    const { email, phone, district, city, country, town, profession, age, education } = req.body;
+    const { email, phone, district, city, country, town, profession, age, education, avatarForPublicId } = req.body;
     const avatarLocalPath = req.file?.path;
     const avatar = avatarLocalPath ? await uploadOnCloudinary(avatarLocalPath) : null;
+
+    if (avatar){
+        
+        try {
+            console.log("avatar url: ", avatarForPublicId)  //extractPublicId(avatarForPublicId)
+            const publicId = avatarForPublicId.split('/').pop().split('.')[0]; // Extract publicId from URL
+            console.log("public Id: ", publicId)
+            const deleteResponse = await deleteFromCloudinary(publicId);
+            if(deleteResponse){
+                console.log("File deleted successfully from cloudinary")}
+        } catch (error) {
+            console.error("error ", error)
+        }
+        
+        }
+    
 
     console.log(
       `Hitting update profile:\n

@@ -7,6 +7,9 @@ import { upload } from '../middlewares/multer.middleware.js';  // Import the mul
 
 const router = express.Router();
 
+// Admin DashBoard
+// routes.get('/', getAdmin)
+
 // Admin login route
 router.post('/login', loginAdmin);
 

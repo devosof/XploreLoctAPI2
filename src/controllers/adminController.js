@@ -5,11 +5,20 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import jwt from 'jsonwebtoken';
 
+
+//GET Admin
+
+export const getAdmin = async(req, res, next) => {
+    
+}
+
+
+
 // Admin login
 export const loginAdmin = async (req, res, next) => {
     try {
-        const { adminSecret } = req.body;
-        if (adminSecret !== process.env.ADMIN_SECRET) {
+        const { user, adminSecret } = req.body;
+        if (user !== process.env.ADMIN_NAME && adminSecret !== process.env.ADMIN_SECRET) {
             throw new ApiError(403, 'Unauthorized');
         }
 
@@ -17,7 +26,7 @@ export const loginAdmin = async (req, res, next) => {
         const token = jwt.sign({ isAdmin: true }, process.env.ADMIN_TOKEN_SECRET, { expiresIn: '1h' });
         res.status(200)
         .cookie("Token", token, {httpOnly: true})
-        .json(new ApiResponse(200, { token }, 'Admin login successful'));
+        .json(new ApiResponse(200, { user, token }, 'Admin login successful'));
     } catch (error) {
         next(error);
     }
